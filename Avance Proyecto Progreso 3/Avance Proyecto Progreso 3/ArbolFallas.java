@@ -1,37 +1,53 @@
-public class ArbolFallas {
-    private NodoFalla raiz;
+btnAggfalla.addActionListener(new ActionListener() {
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        String tipo = txtTipo.getText();
+        String parroquia = (String) cboUbiParroquia.getSelectedItem();
+        String codigoPostal = txtUbicacionPorCP.getText();
+        String descripcion = txtDescripcion.getText();
+        String cedula = txtCorreoFalla.getText().trim(); // Ahora recibe cédula
+        String encargado = registroUsuarios.obtenerTecnicoDisponible();
+        int gravedad = Integer.parseInt(cboGravedad.getSelectedItem().toString());
 
-    public void insertar(Fallas falla) {
-        raiz = insertarRec(raiz, falla);
-    }
-
-    private NodoFalla insertarRec(NodoFalla nodo, Fallas falla) {
-        if (nodo == null) {
-            return new NodoFalla(falla);
+        if (encargado.isEmpty()) {
+            return;
         }
 
-        // Cambio aquí: invertimos la comparación para ordenar de mayor a menor
-        if (falla.getGravedad() > nodo.falla.getGravedad()) {
-            nodo.izquierda = insertarRec(nodo.izquierda, falla);
-        } else {
-            nodo.derecha = insertarRec(nodo.derecha, falla);
+        if (tipo.isEmpty() || "Seleccione una parroquia".equals(parroquia) ||
+                codigoPostal.isEmpty() || descripcion.isEmpty() || cedula.isEmpty()) {
+            JOptionPane.showMessageDialog(null,
+                    "Todos los campos son obligatorios",
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
         }
 
-        return nodo;
-    }
-
-    // El resto de la clase permanece igual
-    public String inOrden() {
-        StringBuilder sb = new StringBuilder();
-        inOrdenRec(raiz, sb);
-        return sb.toString();
-    }
-
-    private void inOrdenRec(NodoFalla nodo, StringBuilder sb) {
-        if (nodo != null) {
-            inOrdenRec(nodo.izquierda, sb);
-            sb.append(nodo.falla.toString()).append("\n");
-            inOrdenRec(nodo.derecha, sb);
+        // Buscar el usuario por cédula para obtener su correo
+        String correoUsuario = "";
+        for (Usuarios u : registroUsuarios.getListaUsuarios()) {
+            if (u.getCedula().equals(cedula)) {
+                correoUsuario = u.getCorreo();
+                break;
+            }
         }
+
+        if (correoUsuario.isEmpty()) {
+            JOptionPane.showMessageDialog(null,
+                    "No se encontró un usuario con la cédula proporcionada",
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        Fallas nuevaFalla = new Fallas(tipo, parroquia, codigoPostal, descripcion,
+                "Pendiente", correoUsuario, encargado, gravedad);
+
+        registroFallas.RegistrarFalla(nuevaFalla, correoUsuario);
+
+        txtTipo.setText("");
+        txtUbicacionPorCP.setText("");
+        txtDescripcion.setText("");
+        txtCorreoFalla.setText(""); // Limpiar el campo de cédula
+        cboUbiParroquia.setSelectedIndex(0);
     }
-}
+});
