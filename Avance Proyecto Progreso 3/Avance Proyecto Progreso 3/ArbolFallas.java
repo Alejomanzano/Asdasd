@@ -1,132 +1,235 @@
-public String formatearFalla(Fallas f) {
-    // Buscar el usuario que reportó esta falla
-    Usuarios usuario = null;
-    for (Usuarios u : listaUsuarios) {
-        if (u.getCorreo().equalsIgnoreCase(f.getUsuarioReporte())) {
-            usuario = u;
-            break;
+public boolean puedeAsignarMasFallas(String correoTecnico) {
+    int fallasPendientesActivas = 0;
+    
+    for (Fallas f : colaFallas) {
+        if (f.getTecnicoAsignado().equalsIgnoreCase(correoTecnico) && 
+            !f.getEstado().equalsIgnoreCase("Finalizado")) {
+            fallasPendientesActivas++;
+            
+            if (fallasPendientesActivas >= 2) {
+                return false;
+            }
         }
     }
-    
-    return "ID: " + f.getIdUnico() + "\n" +
-           "Tipo: " + f.getTipo() + "\n" +
-           "Ubicación: " + f.getParroquia() + 
-           " (CP: " + f.getCodigoPostal() + ")\n" +
-           "Descripción: " + f.getDescripcion() + "\n" +
-           "Estado: " + f.getEstado() + "\n" +
-           "Reportado por:\n" +
-           "  - Nombre: " + (usuario != null ? usuario.getNombre() : "N/A") + "\n" +
-           "  - Cédula: " + (usuario != null ? usuario.getCedula() : "N/A") + "\n" +
-           "  - Correo: " + f.getUsuarioReporte() + "\n" +
-           "Técnico asignado: " + f.getTecnicoAsignado() + "\n" +
-           "Gravedad: " + f.getGravedad() + "\n\n";
+    return true;
 }
 
-BtnMostrarEstadisticas.addActionListener(new ActionListener() {
+btnAsignarTrabajador.addActionListener(new ActionListener() {
     @Override
     public void actionPerformed(ActionEvent e) {
-        String parroquia = (String) cboBarriosEstadistica.getSelectedItem();
-        String codigoPostal = txtEstadisticaCP.getText().trim();
+        String idFalla = textiddos.getText().trim();
+        String correoTecnico = txtPonerACargo.getText().trim();
+        String fallaMostrada = txtFallasRegistradas.getText().trim();
 
-        boolean mostrarActivos = BtaActivoEstadistica.isSelected();
-        boolean mostrarPendientes = BtaPendienteEstadistica.isSelected();
-        boolean mostrarFinalizados = BtaFinalizadoEstadistica.isSelected();
-
-        if (!mostrarActivos && !mostrarPendientes && !mostrarFinalizados) {
-            mostrarActivos = true;
-            mostrarPendientes = true;
-            mostrarFinalizados = true;
+        if (idFalla.isEmpty() || correoTecnico.isEmpty()) {
+            JOptionPane.showMessageDialog(null, "Debe ingresar el ID y el correo del técnico");
+            return;
         }
 
-        StringBuilder resultado = new StringBuilder();
-        resultado.append("=== ESTADÍSTICAS DE FALLAS ===\n\n");
+        // Verificar si el técnico existe y es válido
+        boolean esTecnicoValido = false;
+        for (Usuarios u : registroUsuarios.getListaUsuarios()) {
+            if (u.getCorreo().equalsIgnoreCase(correoTecnico) &&
+                u.getRol().equalsIgnoreCase("tecnico")) {
+                esTecnicoValido = true;
+                break;
+            }
+        }
 
-        int totalFallas = 0;
-        int fallasActivas = 0;
-        int fallasPendientes = 0;
-        int fallasFinalizadas = 0;
+        if (!esTecnicoValido) {
+            JOptionPane.showMessageDialog(null, "El correo no pertenece a un técnico válido");
+            return;
+        }
 
+        // Verificar límite de fallas asignadas
+        if (!registroFallas.puedeAsignarMasFallas(correoTecnico)) {
+            JOptionPane.showMessageDialog(null, 
+                "Este técnico ya tiene 2 fallas pendientes/activas.\n" +
+                "No se pueden asignar más hasta que finalice alguna.");
+            return;
+        }
+
+        // Asignar técnico a la falla
+        boolean asignado = false;
         for (Fallas f : registroFallas.getColaFallas()) {
-            if (!"Seleccione una parroquia".equals(parroquia)) {
-                if (!f.getParroquia().equalsIgnoreCase(parroquia)) {
-                    continue;
-                }
+            if (f.getIdUnico().equalsIgnoreCase(idFalla)) {
+                f.setTecnicoAsignado(correoTecnico);
+                asignado = true;
+                break;
             }
-
-            if (!codigoPostal.isEmpty()) {
-                if (!f.getCodigoPostal().equalsIgnoreCase(codigoPostal)) {
-                    continue;
-                }
-            }
-
-            String estado = f.getEstado();
-            if ((estado.equalsIgnoreCase("Activo") && !mostrarActivos) ||
-                (estado.equalsIgnoreCase("Pendiente") && !mostrarPendientes) ||
-                (estado.equalsIgnoreCase("Finalizado") && !mostrarFinalizados)) {
-                continue;
-            }
-
-            totalFallas++;
-            if (estado.equalsIgnoreCase("Activo")) fallasActivas++;
-            else if (estado.equalsIgnoreCase("Pendiente")) fallasPendientes++;
-            else if (estado.equalsIgnoreCase("Finalizado")) fallasFinalizadas++;
-
-            resultado.append(registroFallas.formatearFalla(f));
         }
 
-        resultado.append("\n=== RESUMEN ESTADÍSTICO ===\n");
-        resultado.append("Total de fallas que coinciden: ").append(totalFallas).append("\n");
-        if (mostrarActivos) {
-            resultado.append("Fallas Activas: ").append(fallasActivas).append("\n");
+        if (asignado) {
+            JOptionPane.showMessageDialog(null, "Técnico asignado correctamente");
+            btnMostrarFallasRegistradas.doClick();
+            txtPonerACargo.setText("");
+        } else {
+            JOptionPane.showMessageDialog(null, "No se encontró una falla con ese ID");
         }
-        if (mostrarPendientes) {
-            resultado.append("Fallas Pendientes: ").append(fallasPendientes).append("\n");
-        }
-        if (mostrarFinalizados) {
-            resultado.append("Fallas Finalizadas: ").append(fallasFinalizadas).append("\n");
-        }
-
-        txtEstadistica.setText(resultado.toString());
     }
 });
 
-BtnFallasGravedad.addActionListener(new ActionListener() {
+// En los ActionListeners de ButtonAActivo, ButtonPendiente y ButtonFinalizado:
+
+// Para ButtonFinalizado (estado Finalizado):
+ButtonFinalizado.addActionListener(new ActionListener() {
     @Override
     public void actionPerformed(ActionEvent e) {
-        ArbolFallas arbol = new ArbolFallas();
-        Queue<Fallas> cola = RegistroFallas.getColaFallas();
-        
-        for (Fallas f : cola) {
-            arbol.insertar(f);
+        String id = txtIdUnicoFalla.getText().trim();
+        String fallaMostrada = txtFallasRegistradas.getText().trim();
+
+        if (id.isEmpty()) {
+            JOptionPane.showMessageDialog(null, "Ingrese un ID primero");
+            return;
         }
 
-        String resultadoOrdenado = arbol.inOrden();
-        
-        if (resultadoOrdenado.isEmpty()) {
-            textfallasgravedad.setText("No hay fallas registradas");
-        } else {
-            // Reemplazar el formato antiguo con el nuevo formato
-            StringBuilder sb = new StringBuilder();
-            String[] fallas = resultadoOrdenado.split("\n\n");
-            
-            for (String fallaStr : fallas) {
-                // Buscar el ID en el string para encontrar la falla completa
-                String id = fallaStr.split("\n")[0].replace("ID: ", "").trim();
-                Fallas falla = null;
+        boolean exito = false;
+        for (Fallas f : registroFallas.getColaFallas()) {
+            if (f.getIdUnico().equalsIgnoreCase(id)) {
+                f.setEstado("Finalizado");
+                exito = true;
                 
-                for (Fallas f : cola) {
-                    if (f.getIdUnico().equals(id)) {
-                        falla = f;
-                        break;
-                    }
-                }
-                
-                if (falla != null) {
-                    sb.append(registroFallas.formatearFalla(falla));
-                }
+                // Notificar que ahora puede asignarse otra falla
+                String tecnico = f.getTecnicoAsignado();
+                int fallasActivas = registroFallas.contarFallasActivasPendientes(tecnico);
+                JOptionPane.showMessageDialog(null,
+                    "Estado cambiado a Finalizado.\n" +
+                    "El técnico " + tecnico + " ahora tiene " + fallasActivas + 
+                    " fallas pendientes/activas.");
+                break;
             }
-            
-            textfallasgravedad.setText(sb.toString());
+        }
+
+        if (exito) {
+            btnMostrarFallasRegistradas.doClick();
+        } else {
+            ButtonPendiente.setSelected(true);
+            JOptionPane.showMessageDialog(null, "No se pudo cambiar el estado");
         }
     }
 });
+
+// Para ButtonAActivo y ButtonPendiente, añade validación:
+ButtonAActivo.addActionListener(new ActionListener() {
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        String id = txtIdUnicoFalla.getText().trim();
+        
+        for (Fallas f : registroFallas.getColaFallas()) {
+            if (f.getIdUnico().equalsIgnoreCase(id)) {
+                // Verificar que el técnico no tenga ya 2 fallas activas/pendientes
+                if (!registroFallas.puedeAsignarMasFallas(f.getTecnicoAsignado())) {
+                    JOptionPane.showMessageDialog(null,
+                        "Este técnico ya tiene 2 fallas pendientes/activas.\n" +
+                        "No se puede cambiar el estado a Activo.");
+                    ButtonFinalizado.setSelected(true);
+                    return;
+                }
+                
+                f.setEstado("Activo");
+                btnMostrarFallasRegistradas.doClick();
+                return;
+            }
+        }
+        JOptionPane.showMessageDialog(null, "No se encontró la falla");
+    }
+});
+
+
+// En los ActionListeners de ButtonAActivo, ButtonPendiente y ButtonFinalizado:
+
+// Para ButtonFinalizado (estado Finalizado):
+ButtonFinalizado.addActionListener(new ActionListener() {
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        String id = txtIdUnicoFalla.getText().trim();
+        String fallaMostrada = txtFallasRegistradas.getText().trim();
+
+        if (id.isEmpty()) {
+            JOptionPane.showMessageDialog(null, "Ingrese un ID primero");
+            return;
+        }
+
+        boolean exito = false;
+        for (Fallas f : registroFallas.getColaFallas()) {
+            if (f.getIdUnico().equalsIgnoreCase(id)) {
+                f.setEstado("Finalizado");
+                exito = true;
+                
+                // Notificar que ahora puede asignarse otra falla
+                String tecnico = f.getTecnicoAsignado();
+                int fallasActivas = registroFallas.contarFallasActivasPendientes(tecnico);
+                JOptionPane.showMessageDialog(null,
+                    "Estado cambiado a Finalizado.\n" +
+                    "El técnico " + tecnico + " ahora tiene " + fallasActivas + 
+                    " fallas pendientes/activas.");
+                break;
+            }
+        }
+
+        if (exito) {
+            btnMostrarFallasRegistradas.doClick();
+        } else {
+            ButtonPendiente.setSelected(true);
+            JOptionPane.showMessageDialog(null, "No se pudo cambiar el estado");
+        }
+    }
+});
+
+// Para ButtonAActivo y ButtonPendiente, añade validación:
+ButtonAActivo.addActionListener(new ActionListener() {
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        String id = txtIdUnicoFalla.getText().trim();
+        
+        for (Fallas f : registroFallas.getColaFallas()) {
+            if (f.getIdUnico().equalsIgnoreCase(id)) {
+                // Verificar que el técnico no tenga ya 2 fallas activas/pendientes
+                if (!registroFallas.puedeAsignarMasFallas(f.getTecnicoAsignado())) {
+                    JOptionPane.showMessageDialog(null,
+                        "Este técnico ya tiene 2 fallas pendientes/activas.\n" +
+                        "No se puede cambiar el estado a Activo.");
+                    ButtonFinalizado.setSelected(true);
+                    return;
+                }
+                
+                f.setEstado("Activo");
+                btnMostrarFallasRegistradas.doClick();
+                return;
+            }
+        }
+        JOptionPane.showMessageDialog(null, "No se encontró la falla");
+    }
+});
+
+
+public int contarFallasActivasPendientes(String correoTecnico) {
+    int count = 0;
+    for (Fallas f : colaFallas) {
+        if (f.getTecnicoAsignado().equalsIgnoreCase(correoTecnico) && 
+            !f.getEstado().equalsIgnoreCase("Finalizado")) {
+            count++;
+        }
+    }
+    return count;
+}
+
+
+btnAggfalla.addActionListener(new ActionListener() {
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        // ... (código existente para obtener datos)
+        
+        // Verificar si el técnico puede recibir más fallas
+        if (!registroFallas.puedeAsignarMasFallas(encargado)) {
+            JOptionPane.showMessageDialog(null,
+                "El técnico " + encargado + " ya tiene 2 fallas pendientes/activas.\n" +
+                "No se pueden asignar más fallas hasta que finalice alguna.");
+            return;
+        }
+        
+        // ... (resto del código existente)
+    }
+});
+
+
