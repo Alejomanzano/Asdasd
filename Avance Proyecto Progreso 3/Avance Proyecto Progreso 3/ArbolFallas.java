@@ -31,4 +31,16 @@ private Usuarios buscarUsuarioReporte() {
     }
     return null;
 }
+public class RegistroFallas {
+    private static Queue<Fallas> colaFallas;
+    private List<Usuarios> listaUsuarios;
+    
+    // Añade este método:
+    public static List<Usuarios> getListaUsuarios() {
+        // Necesitarás modificar esto según cómo tengas la estructura
+        return listaUsuarios;
+    }
+    
+    // ... resto del código ...
+}
 
