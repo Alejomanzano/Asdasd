@@ -22,28 +22,15 @@ public String formatearFalla(Fallas f) {
            "Gravedad: " + f.getGravedad() + "\n\n";
 }
 
-public String mostrarTodasFallas() {
-    if (colaFallas.isEmpty()) {
-        return "No hay fallas registradas";
-    }
-
-    StringBuilder sb = new StringBuilder();
-    for (Fallas f : colaFallas) {
-        sb.append(formatearFalla(f));
-    }
-    return sb.toString();
-}
-
-btnMostrarFallasRegistradas.addActionListener(new ActionListener() {
+BtnMostrarEstadisticas.addActionListener(new ActionListener() {
     @Override
     public void actionPerformed(ActionEvent e) {
-        String cedula = textcedu.getText().trim();
+        String parroquia = (String) cboBarriosEstadistica.getSelectedItem();
         String codigoPostal = txtEstadisticaCP.getText().trim();
 
-        // Determinar estados seleccionados
-        boolean mostrarActivos = ButtonAActivo.isSelected();
-        boolean mostrarPendientes = ButtonPendiente.isSelected();
-        boolean mostrarFinalizados = ButtonFinalizado.isSelected();
+        boolean mostrarActivos = BtaActivoEstadistica.isSelected();
+        boolean mostrarPendientes = BtaPendienteEstadistica.isSelected();
+        boolean mostrarFinalizados = BtaFinalizadoEstadistica.isSelected();
 
         if (!mostrarActivos && !mostrarPendientes && !mostrarFinalizados) {
             mostrarActivos = true;
@@ -52,37 +39,26 @@ btnMostrarFallasRegistradas.addActionListener(new ActionListener() {
         }
 
         StringBuilder resultado = new StringBuilder();
-        String correoUsuario = "";
+        resultado.append("=== ESTADÍSTICAS DE FALLAS ===\n\n");
 
-        // Si hay cédula, buscar correo del usuario
-        if (!cedula.isEmpty()) {
-            for (Usuarios u : registroUsuarios.getListaUsuarios()) {
-                if (u.getCedula().equals(cedula)) {
-                    correoUsuario = u.getCorreo();
-                    break;
+        int totalFallas = 0;
+        int fallasActivas = 0;
+        int fallasPendientes = 0;
+        int fallasFinalizadas = 0;
+
+        for (Fallas f : registroFallas.getColaFallas()) {
+            if (!"Seleccione una parroquia".equals(parroquia)) {
+                if (!f.getParroquia().equalsIgnoreCase(parroquia)) {
+                    continue;
                 }
             }
 
-            if (correoUsuario.isEmpty()) {
-                txtFallasRegistradas.setText("No se encontró usuario con cédula: " + cedula);
-                return;
-            }
-        }
-
-        for (Fallas f : registroFallas.getColaFallas()) {
-            // Si se ingresó cédula, mostrar solo fallas de ese usuario
-            if (!cedula.isEmpty() && !f.getUsuarioReporte().equalsIgnoreCase(correoUsuario)) {
-                continue;
-            }
-
-            // Si se ingresó código postal
             if (!codigoPostal.isEmpty()) {
                 if (!f.getCodigoPostal().equalsIgnoreCase(codigoPostal)) {
                     continue;
                 }
             }
 
-            // Filtrar por estado
             String estado = f.getEstado();
             if ((estado.equalsIgnoreCase("Activo") && !mostrarActivos) ||
                 (estado.equalsIgnoreCase("Pendiente") && !mostrarPendientes) ||
@@ -90,15 +66,67 @@ btnMostrarFallasRegistradas.addActionListener(new ActionListener() {
                 continue;
             }
 
+            totalFallas++;
+            if (estado.equalsIgnoreCase("Activo")) fallasActivas++;
+            else if (estado.equalsIgnoreCase("Pendiente")) fallasPendientes++;
+            else if (estado.equalsIgnoreCase("Finalizado")) fallasFinalizadas++;
+
             resultado.append(registroFallas.formatearFalla(f));
         }
 
-        if (resultado.length() == 0) {
-            txtFallasRegistradas.setText(cedula.isEmpty() ?
-                    "No se encontraron fallas con los criterios seleccionados" :
-                    "No hay fallas registradas para este usuario");
+        resultado.append("\n=== RESUMEN ESTADÍSTICO ===\n");
+        resultado.append("Total de fallas que coinciden: ").append(totalFallas).append("\n");
+        if (mostrarActivos) {
+            resultado.append("Fallas Activas: ").append(fallasActivas).append("\n");
+        }
+        if (mostrarPendientes) {
+            resultado.append("Fallas Pendientes: ").append(fallasPendientes).append("\n");
+        }
+        if (mostrarFinalizados) {
+            resultado.append("Fallas Finalizadas: ").append(fallasFinalizadas).append("\n");
+        }
+
+        txtEstadistica.setText(resultado.toString());
+    }
+});
+
+BtnFallasGravedad.addActionListener(new ActionListener() {
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        ArbolFallas arbol = new ArbolFallas();
+        Queue<Fallas> cola = RegistroFallas.getColaFallas();
+        
+        for (Fallas f : cola) {
+            arbol.insertar(f);
+        }
+
+        String resultadoOrdenado = arbol.inOrden();
+        
+        if (resultadoOrdenado.isEmpty()) {
+            textfallasgravedad.setText("No hay fallas registradas");
         } else {
-            txtFallasRegistradas.setText(resultado.toString());
+            // Reemplazar el formato antiguo con el nuevo formato
+            StringBuilder sb = new StringBuilder();
+            String[] fallas = resultadoOrdenado.split("\n\n");
+            
+            for (String fallaStr : fallas) {
+                // Buscar el ID en el string para encontrar la falla completa
+                String id = fallaStr.split("\n")[0].replace("ID: ", "").trim();
+                Fallas falla = null;
+                
+                for (Fallas f : cola) {
+                    if (f.getIdUnico().equals(id)) {
+                        falla = f;
+                        break;
+                    }
+                }
+                
+                if (falla != null) {
+                    sb.append(registroFallas.formatearFalla(falla));
+                }
+            }
+            
+            textfallasgravedad.setText(sb.toString());
         }
     }
 });
