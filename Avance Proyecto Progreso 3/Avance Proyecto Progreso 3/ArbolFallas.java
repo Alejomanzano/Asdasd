@@ -10,7 +10,8 @@ public class ArbolFallas {
             return new NodoFalla(falla);
         }
 
-        if (falla.getGravedad() < nodo.falla.getGravedad()) {
+        // Cambio aquí: invertimos la comparación para ordenar de mayor a menor
+        if (falla.getGravedad() > nodo.falla.getGravedad()) {
             nodo.izquierda = insertarRec(nodo.izquierda, falla);
         } else {
             nodo.derecha = insertarRec(nodo.derecha, falla);
@@ -19,6 +20,7 @@ public class ArbolFallas {
         return nodo;
     }
 
+    // El resto de la clase permanece igual
     public String inOrden() {
         StringBuilder sb = new StringBuilder();
         inOrdenRec(raiz, sb);
@@ -27,11 +29,9 @@ public class ArbolFallas {
 
     private void inOrdenRec(NodoFalla nodo, StringBuilder sb) {
         if (nodo != null) {
-            inOrdenRec(nodo.derecha, sb);
-
-            sb.append(nodo.falla.toString()).append("\n");
             inOrdenRec(nodo.izquierda, sb);
-
+            sb.append(nodo.falla.toString()).append("\n");
+            inOrdenRec(nodo.derecha, sb);
         }
     }
 }
