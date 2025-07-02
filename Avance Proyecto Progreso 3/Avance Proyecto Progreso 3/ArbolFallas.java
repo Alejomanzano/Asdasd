@@ -29,3 +29,15 @@ public String mostrarTodasFallas() {
     }
     return sb.toString();
 }
+
+
+
+listarFallasButton.addActionListener(new ActionListener() {
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        textinfodos.setText(registroFallas.mostrarTodasFallas());
+    }
+});
+
+
+o
